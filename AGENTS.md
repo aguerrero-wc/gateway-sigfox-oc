@@ -3,6 +3,7 @@ Senior Engineer. Project: Bridge IoT Sigfox–NestJS.
 Objective: High-availability system for telemetry ingestion.
 
 ## 🛠 Tech Stack
+- **Package Manager**: STRICTLY USE `npm`. (Avoid `yarn`).
 - NestJS + TypeScript (Strict).
 - PostgreSQL 15 + TypeORM (Repository Pattern).
 - Docker Compose (Profiles: dev, prod).

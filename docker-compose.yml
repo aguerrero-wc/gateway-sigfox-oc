@@ -1,8 +1,9 @@
 services:
   # ============================================
-  # BASE BACKEND SERVICE (Template)
+  # BASE BACKEND SERVICE (Template - Never started directly)
   # ============================================
   app-backend:
+    profiles: ["_base"]  # Prevents this service from starting directly
     build:
       context: .
       dockerfile: Dockerfile
@@ -37,7 +38,6 @@ services:
         max-size: "5m"
         max-file: "3"
         compress: "true"
-    # Base service is not started directly
 
   # ============================================
   # DEVELOPMENT PROFILE
@@ -47,7 +47,7 @@ services:
     profiles: ["dev"]
     build:
       target: development
-    command: yarn run start:dev
+    command: npm run start:dev
     environment:
       NODE_ENV: development
       # Development-specific vars
@@ -61,7 +61,6 @@ services:
       - ./nest-cli.json:/usr/src/app/nest-cli.json:ro
       # Protect node_modules with anonymous volume
       - /usr/src/app/node_modules
-      - /usr/src/app/dist
     stdin_open: true
     tty: true
 
