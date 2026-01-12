@@ -1,22 +1,17 @@
 #!/bin/bash
 set -e
+echo "🚀 [DEV] Starting Bridge IoT Pipeline..."
 
-echo "🚀 Deploying Development Environment..."
-
-# Verificar que existe .env
-if [ ! -f .env ]; then
-    echo "❌ Error: .env file not found"
-    exit 1
+# 1. Validar Red
+if ! docker network inspect sigfox_network >/dev/null 2>&1; then
+    echo "🌐 Creating internal bridge network..."
+    docker network create --subnet=172.20.0.0/16 sigfox_network
 fi
 
-# Cargar variables
-export $(grep -v '^#' .env | xargs)
+# 2. Validar .env
+[ ! -f .env ] && { echo "❌ Missing .env"; exit 1; }
 
-# Build y deploy
-docker compose --profile dev down
-docker compose --profile dev build
-docker compose --profile dev up -d
+# 3. Deploy
+docker compose --profile dev up -d --build
 
-echo "✅ Development environment ready!"
-echo "📊 App: http://localhost:${APP_PORT}"
-echo "🗄️  DB: localhost:${DB_PORT}"
+echo "✅ Dev Environment is UP"

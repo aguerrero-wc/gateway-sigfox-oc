@@ -246,3 +246,15 @@ Required action:
 - Makes database schema visible at a glance
 - Ensures consistency between documentation and code
 - Helps agents understand existing relationships before adding new ones
+
+## 14. Operational Procedures (Agent Execution)
+
+### Environment Management
+- To start/restart development: `npm run infra:dev`
+- To check service status: `docker compose --profile dev ps`
+- **Rule**: After modifying `docker-compose.yml` or `.env`, the agent MUST execute `npm run infra:dev` to sync the state.
+
+### Deployment Validation
+- Before marking a task as DONE:
+  1. The agent must verify the container is running: `docker inspect -f '{{.State.Running}}' sigfox-app-dev`
+  2. The agent must check logs for runtime errors: `docker compose logs app-dev --tail=20`

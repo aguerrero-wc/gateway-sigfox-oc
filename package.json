@@ -6,6 +6,9 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "infra:dev": "bash scripts/deploy.dev.sh",
+    "infra:prod": "bash scripts/deploy.prod.sh",
+    "infra:check": "docker ps --filter 'network=sigfox_network'",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
