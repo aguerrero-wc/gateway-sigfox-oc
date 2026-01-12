@@ -1,0 +1,196 @@
+services:
+  # ============================================
+  # BASE BACKEND SERVICE (Template)
+  # ============================================
+  app-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ${DOCKER_TARGET:-development}
+      args:
+        - NODE_ENV=${NODE_ENV:-development}
+    image: sigfox-nest-bridge:${VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+      # Database Configuration
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-sigfox_db}
+      DB_USERNAME: ${DB_USERNAME:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD}
+      # Application Settings
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-3600}
+      # Add other env vars as needed
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    networks:
+      - sigfox_network
+    logging: &default-logging
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+        compress: "true"
+    # Base service is not started directly
+
+  # ============================================
+  # DEVELOPMENT PROFILE
+  # ============================================
+  app-dev:
+    extends: app-backend
+    profiles: ["dev"]
+    build:
+      target: development
+    command: yarn run start:dev
+    environment:
+      NODE_ENV: development
+      # Development-specific vars
+      LOG_LEVEL: debug
+    volumes:
+      # Mount source code for hot-reload
+      - ./src:/usr/src/app/src:delegated
+      - ./test:/usr/src/app/test:delegated
+      - ./tsconfig.json:/usr/src/app/tsconfig.json:ro
+      - ./tsconfig.build.json:/usr/src/app/tsconfig.build.json:ro
+      - ./nest-cli.json:/usr/src/app/nest-cli.json:ro
+      # Protect node_modules with anonymous volume
+      - /usr/src/app/node_modules
+      - /usr/src/app/dist
+    stdin_open: true
+    tty: true
+
+  # ============================================
+  # PRODUCTION PROFILE
+  # ============================================
+  app-prod:
+    extends: app-backend
+    profiles: ["prod"]
+    build:
+      target: production
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: info
+    volumes:
+      # Only mount necessary runtime volumes
+      - ./temp/reports:/usr/src/app/temp/reports
+      - ./logs:/usr/src/app/logs
+    # Production-specific resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # ============================================
+  # DATABASE SERVICE (PostgreSQL 15)
+  # ============================================
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-sigfox_db}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+      # Performance tuning
+      POSTGRES_SHARED_BUFFERS: "256MB"
+      POSTGRES_EFFECTIVE_CACHE_SIZE: "1GB"
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d:ro  # Optional init scripts
+    networks:
+      - sigfox_network
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-sigfox_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ============================================
+  # NGINX REVERSE PROXY (Production Only)
+  # ============================================
+  nginx:
+    image: nginx:1.25-alpine
+    profiles: ["prod"]
+    restart: unless-stopped
+    depends_on:
+      - app-prod
+    ports:
+      - "${NGINX_HTTP_PORT:-80}:80"
+      - "${NGINX_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro  # SSL certificates
+      - nginx_cache:/var/cache/nginx
+    networks:
+      - sigfox_network
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ============================================
+  # REDIS CACHE (Optional - Production)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    profiles: ["prod"]
+    restart: unless-stopped
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - sigfox_network
+    logging: *default-logging
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+# ============================================
+# VOLUMES
+# ============================================
+volumes:
+  pg_data:
+    driver: local
+    name: sigfox_postgres_data
+  redis_data:
+    driver: local
+    name: sigfox_redis_data
+  nginx_cache:
+    driver: local
+    name: sigfox_nginx_cache
+
+# ============================================
+# NETWORKS
+# ============================================
+networks:
+  sigfox_network:
+    driver: bridge
+    name: sigfox_network
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
