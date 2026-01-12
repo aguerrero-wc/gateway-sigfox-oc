@@ -205,3 +205,44 @@ docker-compose --profile prod up -d
 - JSON format for production
 - Rotation: max 3 files, 5MB each
 - Compression enabled
+
+## 13. Entity Creation Protocol (Database Relations)
+
+### Before Creating Any Entity
+
+1. **STOP**: Check if `docs/database-relations.md` exists
+2. **Document First**: Add the entity and its relationships to the schema file
+3. **Then Code**: Implement the entity with decorators matching the documented relationships
+
+### Validation Rule
+
+⚠️ **ALERT TRIGGER**: If an agent creates an entity file (`*.entity.ts`) WITHOUT updating `docs/database-relations.md`:
+```
+❌ PROTOCOL VIOLATION DETECTED
+Entity created without documentation update.
+
+Required action:
+1. Stop current implementation
+2. Update docs/database-relations.md with:
+   - Entity name
+   - All relationships (@OneToMany, @ManyToOne, @OneToOne)
+   - Foreign keys
+   - Cascade rules
+3. Then resume entity implementation
+```
+
+### Relationship Documentation Format
+```markdown
+## EntityA -> EntityB
+- Type: [OneToMany|ManyToOne|OneToOne|ManyToMany]
+- FK: foreign_key_column in EntityB
+- Cascade: [DELETE|SET NULL|RESTRICT]
+- Bidirectional: [Yes|No]
+```
+
+### Why This Matters
+
+- Prevents circular dependency issues
+- Makes database schema visible at a glance
+- Ensures consistency between documentation and code
+- Helps agents understand existing relationships before adding new ones
