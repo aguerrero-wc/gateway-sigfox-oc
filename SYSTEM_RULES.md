@@ -1,6 +1,6 @@
 # Project System Rules: Sigfox-Nest-Bridge
 
-## 1. Core Tech Stack & Versions
+## Core Tech Stack & Versions
 
 - **Framework**: NestJS v10+ (Modular Architecture)
 - **Language**: TypeScript (Strict Mode enabled)
@@ -10,30 +10,13 @@
 - **Async**: `@nestjs/event-emitter` for non-blocking ingestion
 - **Documentation**: Swagger / OpenAPI (exposed at `/api/docs`)
 
----
-
-## 2. Coding Standards (Naming & Structure)
-
-### General Naming
-
-- Classes / Interfaces: `PascalCase` (e.g., `SigfoxService`)
-- Variables / Functions: `camelCase` (e.g., `upsertDevice`)
-- Files: `kebab-case` (e.g., `sigfox-callback.dto.ts`)
 
 ### Database Naming
 
 - Tables & Columns: **MUST use `snake_case`**
 - Requirement: Explicit use of `@Column({ name: 'column_name' })` in all entities
 
-### Project Structure
-
-- Domain-based modules under `src/modules/`
-- DTOs, Entities, and Interfaces separated into dedicated folders per module
-- Controllers contain **no business logic**; they only handle routing and DTO validation
-
----
-
-## 3. Database & Transactional Integrity
+## Database & Transactional Integrity
 
 ### Pattern
 
@@ -52,33 +35,10 @@
   - Development: `max: 20`
   - Production: `max: 100`
 
----
 
-## 4. The Sigfox Ingestion Protocol (The 201 Rule)
+## Error Handling
 
-### Non-blocking Ingestion
-
-- Controllers MUST respond with `201 Created` immediately after DTO validation
-- Heavy logic (parsing, persistence, calculations) MUST be handled in an **Event Listener**
-
-### Flow
-```plaintext
-HTTP Request → Controller → DTO Validation → 201 Response
-                    ↓
-              Event Emitter
-                    ↓
-              Event Listener → Business Logic → Database
-```
-
----
-
-## 5. Error Handling
-
-### HTTP Exceptions
-
-- Use NestJS built-in exceptions (`BadRequestException`, `NotFoundException`, etc.)
-- All errors MUST include meaningful messages
-- Production errors MUST NOT expose internal details
+- Use NestJS `Built-in Exceptions`. All Sigfox callback errors should be logged, but the service should aim to return a valid response to Sigfox if possible to avoid unnecessary retries from their backend.
 
 ### Logging
 
@@ -87,15 +47,12 @@ HTTP Request → Controller → DTO Validation → 201 Response
   - Development: `debug`
   - Production: `info`, `warn`, `error`
 
----
-
-## 6. Security Guidelines
+## Security Guidelines
 
 ### Environment Variables
-
-- **NEVER** commit `.env` files
-- All sensitive data MUST be in environment variables
-- Use `.env.example` as template
+- Never hardcode credentials.
+- All sensitive data (DB_PASSWORD, etc.) must be retrieved from `process.env`.
+- Ensure the API is ready for a simple API Key validation in the future (prepare the structure).
 
 ### Authentication & Authorization
 
@@ -103,9 +60,7 @@ HTTP Request → Controller → DTO Validation → 201 Response
 - Token expiration configurable via `JWT_EXPIRATION`
 - Role-based access control (RBAC) where applicable
 
----
-
-## 7. Testing Requirements
+## Testing Requirements
 
 ### Unit Tests
 
@@ -117,9 +72,7 @@ HTTP Request → Controller → DTO Validation → 201 Response
 - Critical flows MUST have integration tests
 - Database operations MUST be tested with real database
 
----
-
-## 8. Docker & Deployment
+## Docker & Deployment
 
 ### Profiles
 
@@ -134,7 +87,6 @@ docker-compose --profile dev up
 # Production
 docker-compose --profile prod up -d
 ```
-
 ### Environment
 
 - All services communicate through internal network
@@ -143,13 +95,12 @@ docker-compose --profile prod up -d
 
 ---
 
-## 9. API Documentation
+## API Documentation
 
 ### Swagger
 
 - Endpoint: `/api/docs`
 - All endpoints MUST be documented with:
-  - `@ApiOperation()`
   - `@ApiResponse()`
   - `@ApiTags()`
 
@@ -158,26 +109,7 @@ docker-compose --profile prod up -d
 - All DTOs MUST use validation decorators
 - Example values in `@ApiProperty()` decorator
 
----
-
-## 10. Git Workflow
-
-### Commit Messages
-
-- Format: `type(scope): message`
-- Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
-- Example: `feat(sigfox): add device message ingestion`
-
-### Branches
-
-- `main`: Production-ready code
-- `develop`: Development branch
-- Feature branches: `feature/description`
-- Bugfix branches: `bugfix/description`
-
----
-
-## 11. Performance Considerations
+## Performance Considerations
 
 ### Database
 
@@ -190,9 +122,8 @@ docker-compose --profile prod up -d
 - Use Redis for frequently accessed data (production)
 - Cache strategy: `allkeys-lru`
 
----
 
-## 12. Monitoring & Logging
+## Monitoring & Logging
 
 ### Health Checks
 
@@ -206,7 +137,7 @@ docker-compose --profile prod up -d
 - Rotation: max 3 files, 5MB each
 - Compression enabled
 
-## 13. Entity Creation Protocol (Database Relations)
+## Entity Creation Protocol (Database Relations)
 
 ### Before Creating Any Entity
 
@@ -247,7 +178,7 @@ Required action:
 - Ensures consistency between documentation and code
 - Helps agents understand existing relationships before adding new ones
 
-## 14. Operational Procedures (Agent Execution)
+## Operational Procedures (Agent Execution)
 
 ### Environment Management
 - To start/restart development: `npm run infra:dev`

@@ -14,24 +14,26 @@ Objective: High-availability system for telemetry ingestion.
 - Docker Compose (Profiles: dev, prod).
 - Event-Driven: @nestjs/event-emitter for asynchronicity.
 
-## 📂 Folder Structure Rules
-- ALL functional modules must reside in `src/modules/`.
-- NO domain logic or entities should be in the root of `src/`.
-- Cross-module imports MUST use relative paths (e.g., `../devices/...`).
+## 2. Project Structure Conventions
+- Follow the standard NestJS modular architecture.
+- Modules should be organized by domain (e.g., `src/modules/sigfox`, `src/modules/devices`).
+- Use the **Repository Pattern** for database interactions.
+- DTOs (Data Transfer Objects) must be used for all incoming request validation.
 
-## 🐳 Docker & Network
-- **Network**: `sigfox_network` (Internal bridge, subnet 172.20.0.0/16).
-- **Commands**:
-  - Dev: `docker compose --profile dev up -d`
-  - Build: `docker compose build app-dev`
-- **DB Connection**: Host `postgres`, Port `5432`.
+## 3. Coding Guidelines
+- **Clean Code**: Follow SOLID principles.
+- **Naming**: 
+  - Use `camelCase` for variables and functions.
+  - Use `PascalCase` for classes and interfaces.
+  - Use `snake_case` for database columns (defined in TypeORM entities).
 
-## 🏗 Coding & DB Rules
-- **Naming**: TS `camelCase`, DB `snake_case` (Mandatory use of `@Column({ name: '...' })`).
-- **Atomicity**: Multi-table operations (Upsert Device + Insert Message) MUST use transactions (`QueryRunner`).
-- **The 201 Rule**: The Controller responds with `201 Created` immediately after validation and event emission. Persistence happens in the Listener.
 
-## 📖 Knowledge Base
+## 5. Knowledge Base
 - Read `.instructions/architecture.md` for business logic and schemas.
 - Read `.instructions/tasks.md` for progress tracking.
 - Document everything in Swagger (`/api/docs`).
+
+## 6. Documentation & Logs
+- Every service method must have a brief JSDoc comment.
+- Use the NestJS `Logger` to track incoming Sigfox payloads and database insertion status.
+
