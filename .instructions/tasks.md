@@ -28,32 +28,39 @@
   - [x] Verify that NestJS successfully connects to Postgres (check container logs).
 
 
-# Phase 2: Core Domain Implementation (Devices & Messages)
+---
 
-## Task 2.1: Documentation & Module Scaffolding
+# 📋 Phase 2: Core Domain Implementation (Strict Order)
 
-- [ ] **Relationship Documentation**: Create/Update `docs/database-relations.md` defining the OneToMany relationship between Device and DeviceMessage (FK: `device_id`, Cascade: `SET NULL`)
-- [ ] **Scaffold Module**: Generate `DevicesModule`, `DevicesService`, and `DevicesController` using NestJS CLI
+## 2.0 Infrastructure & Global Config (Immediate Setup)
+- [ ] **Task 2.0.1: Swagger Installation**: Install `@nestjs/swagger` and `swagger-ui-express`.
+- [ ] **Task 2.0.2: Swagger Bootstrapping**: Configure `DocumentBuilder` in `main.ts` to expose docs at `/api/docs`.
+- [ ] **Task 2.0.3: Global Validation**: Enable `ValidationPipe` with `transform: true` and `whitelist: true` in `main.ts`.
+- [ ] **Verification**: Run the app and confirm access to `http://localhost:3000/api/docs`.
 
-## Task 2.2: Entity Implementation (Snake Case Protocol)
+## 2.1 Documentation & Scaffold (Protocol First)
+- [ ] **Task 2.1.1: Relationship Documentation**: Create `docs/database-relations.md` following the mandatory format. Define:
+    - `Device` -> `DeviceMessage` (OneToMany, FK: `device_id`, Cascade: `SET NULL`).
+- [ ] **Task 2.1.2: Module Generation**: Generate `DevicesModule` using NestJS CLI (`nest g mo modules/devices`, `nest g s modules/devices`, `nest g co modules/devices`).
 
-- [ ] **Implement Device Entity**:
-  - Fields: `id` (string, PK), `device_type_name`, `device_type_id`, `last_seen` (timestamp)
-  - Ensure `@Column({ name: '...' })` uses snake_case
+## 2.2 Entity Implementation (Snake Case Protocol)
+- [ ] **Task 2.2.1: Device Entity**: Implement `src/modules/devices/entities/device.entity.ts`.
+    - Fields: `id` (string, PK), `device_type_name`, `device_type_id`, `last_seen` (timestamp).
+    - **Rule**: Explicit `@Column({ name: 'snake_case_name' })`.
+- [ ] **Task 2.2.2: DeviceMessage Entity**: Implement `src/modules/devices/entities/device-message.entity.ts`.
+    - Fields: `id` (uuid), `device_id` (FK), `message_type`, `data_raw`, `lqi`, `link_quality`, `operator_name`, `country_code`, `computed_lat`, `computed_lng`, `rssi_avg`, `received_at`.
+    - **Rule**: Set `@ManyToOne` relation to `Device`.
+- [ ] **Task 2.2.3: Database Sync**: Run `npm run infra:dev` and verify in logs that tables `devices` and `device_messages` were created.
 
-- [ ] **Implement DeviceMessage Entity**:
-  - Fields: `id` (uuid), `device_id` (FK), `message_type`, `data_raw`, `lqi`, `link_quality`, `operator_name`, `country_code`, `computed_lat`, `computed_lng`, `rssi_avg`, `received_at`
-  - Relation: `@ManyToOne` to Device
+## 2.3 Service Logic & DTOs
+- [ ] **Task 2.3.1: DTOs with Swagger**: Create `CreateDeviceDto` and `CreateMessageDto`. Use `@ApiProperty` on every field to ensure visibility in Swagger.
+- [ ] **Task 2.3.2: Upsert Logic**: Implement `upsertDevice` in `DevicesService`.
+    - *Logic*: `ON CONFLICT (id) DO UPDATE SET last_seen = EXCLUDED.last_seen`.
+- [ ] **Task 2.3.3: Message Persistence**: Implement `createMessage` using Repository Pattern.
+- [ ] **Task 2.3.4: Controller Exposure**: Create `POST /devices` and `POST /devices/messages` (temporary test endpoints) or a combined ingestion endpoint.
 
-- [ ] **Migration**: Generate and run the migration to sync PostgreSQL
+## 2.4 Quality Assurance & Verification
+- [ ] **Task 2.4.1: Unit Test**: Create `devices.service.spec.ts` ensuring `upsertDevice` handles new and existing devices correctly.
+- [ ] **Task 2.4.2: Manual E2E Validation**: Use the `/api/docs` interface to send a sample Sigfox JSON and verify the record exists in the PostgreSQL database.
 
-## Task 2.3: Service Logic (Upsert & Persistence)
-
-- [ ] **DevicesService - Upsert**: Implement `upsertDevice(data: CreateDeviceDto)` logic to handle existence checks for Sigfox ID
-- [ ] **DevicesService - Message**: Implement `createMessage(data: CreateMessageDto)` using Repository Pattern
-- [ ] **Swagger Integration**: Decorate DTOs and Controller with `@ApiProperty`, `@ApiTags`, and `@ApiResponse`
-
-## Task 2.4: Quality Control (Testing)
-
-- [ ] **Unit Tests**: Create `devices.service.spec.ts` to verify that `upsertDevice` doesn't create duplicate IDs
-- [ ] **E2E Validation**: Verify `GET /devices` returns the correct structure via Swagger at `/api/docs`
+---

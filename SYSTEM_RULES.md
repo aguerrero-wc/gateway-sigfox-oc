@@ -10,7 +10,6 @@
 - **Async**: `@nestjs/event-emitter` for non-blocking ingestion
 - **Documentation**: Swagger / OpenAPI (exposed at `/api/docs`)
 
-
 ### Database Naming
 
 - Tables & Columns: **MUST use `snake_case`**

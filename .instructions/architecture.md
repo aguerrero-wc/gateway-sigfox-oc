@@ -21,12 +21,12 @@ Middleware to receive, decode, and persist telemetry from Sigfox. Optimized for 
 - `last_seen`: timestamp.
 
 ### Table: `device_messages`
-- `id`: uuid (Primary Key).
+- `id`: string (Primary Key).
 - `device_id`: string (Foreign Key -> devices.id).
 - `message_type`: string.
 - `data_raw`: string (The hex payload).
 - `lqi`: string.
-- `link_quality`: integer.
+- `link_quality`: string.
 - `operator_name`: string.
 - `country_code`: string.
 - `computed_lat`: float.
