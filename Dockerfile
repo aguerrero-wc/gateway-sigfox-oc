@@ -32,8 +32,8 @@ ENV NODE_ENV=development
 COPY package*.json ./
 
 # Install ALL dependencies (including devDependencies)
-# npm ci es más rápido y reproducible que npm install
-RUN npm ci --loglevel=error && \
+# Using npm install for development to ensure all dependencies are properly installed
+RUN npm install --loglevel=error && \
     npm cache clean --force
 
 # Copy application source code

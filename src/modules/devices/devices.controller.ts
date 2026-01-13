@@ -1,8 +1,23 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  HttpCode,
+  HttpStatus,
+  Query,
+} from '@nestjs/common';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { DevicesService } from './devices.service';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { DeviceMessage } from './entities/device-message.entity';
+import { Device } from './entities/device.entity';
 
 @ApiTags('sigfox')
 @Controller('devices')
@@ -52,7 +67,22 @@ export class DevicesController {
   @ApiResponse({ status: 201, description: 'Message ingested successfully' })
   @ApiResponse({ status: 400, description: 'Invalid payload' })
   async ingestMessage(@Body() dto: CreateMessageDto): Promise<{ id: string }> {
-    const message = await this.devicesService.createMessage(dto);
+    const message = await this.devicesService.createMessage(dto as any);
     return { id: message.id };
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'Get all devices with status' })
+  @ApiQuery({ name: 'status', required: false, enum: ['online', 'offline'] })
+  @ApiResponse({ status: 200, description: 'List of devices' })
+  async getDevices(@Query('status') status?: string): Promise<Device[]> {
+    const queryBuilder =
+      this.devicesService['deviceRepository'].createQueryBuilder('device');
+
+    if (status) {
+      queryBuilder.where('device.status = :status', { status });
+    }
+
+    return queryBuilder.orderBy('device.lastSeen', 'DESC').getMany();
   }
 }

@@ -4,7 +4,26 @@ import { DataSource, Repository } from 'typeorm';
 import { Device } from './entities/device.entity';
 import { DeviceMessage } from './entities/device-message.entity';
 import { CreateDeviceDto } from './dto/create-device.dto';
-import { CreateMessageDto } from './dto/create-message.dto';
+
+interface SigfoxPayload {
+  messageType: string;
+  deviceType: string;
+  device: string;
+  data: string;
+  lqi?: string;
+  linkQuality?: string;
+  operatorName?: string;
+  countryCode?: string;
+  deviceTypeId?: string;
+  duplicates?: Array<{ bsId?: string; rssi?: number; nbRep?: number }>;
+  computedLocation?: {
+    lat?: number;
+    lng?: number;
+    radius?: number;
+    source?: number;
+    status?: number;
+  };
+}
 
 @Injectable()
 export class DevicesService {
@@ -21,6 +40,7 @@ export class DevicesService {
   /**
    * Upserts a device based on Sigfox device ID.
    * If device exists, updates last_seen; otherwise creates new record.
+   * Always sets status to 'online' when device is seen.
    */
   async upsertDevice(dto: CreateDeviceDto): Promise<Device> {
     this.logger.debug(`Upserting device: ${dto.id}`);
@@ -33,6 +53,7 @@ export class DevicesService {
       existing.lastSeen = new Date(dto.lastSeen || Date.now());
       existing.deviceTypeName = dto.deviceTypeName;
       existing.deviceTypeId = dto.deviceTypeId;
+      existing.status = 'online';
       return this.deviceRepository.save(existing);
     }
 
@@ -41,6 +62,7 @@ export class DevicesService {
       deviceTypeName: dto.deviceTypeName,
       deviceTypeId: dto.deviceTypeId,
       lastSeen: dto.lastSeen ? new Date(dto.lastSeen) : new Date(),
+      status: 'online',
     });
 
     return this.deviceRepository.save(device);
@@ -50,8 +72,8 @@ export class DevicesService {
    * Creates a new device message record from Sigfox payload.
    * Uses transaction to ensure atomicity when creating/updating device and message.
    */
-  async createMessage(dto: CreateMessageDto): Promise<DeviceMessage> {
-    this.logger.debug(`Creating message for device: ${dto.device}`);
+  async createMessage(payload: SigfoxPayload): Promise<DeviceMessage> {
+    this.logger.debug(`Creating message for device: ${payload.device}`);
 
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
@@ -62,22 +84,23 @@ export class DevicesService {
       const messageRepo = queryRunner.manager.getRepository(DeviceMessage);
 
       const existing = await deviceRepo.findOne({
-        where: { id: dto.device },
+        where: { id: payload.device },
       });
 
-      let device: Device;
       if (existing) {
         existing.lastSeen = new Date();
-        existing.deviceTypeName = dto.deviceType;
-        existing.deviceTypeId = dto.deviceTypeId || existing.deviceTypeId;
-        device = await deviceRepo.save(existing);
+        existing.deviceTypeName = payload.deviceType;
+        existing.deviceTypeId = payload.deviceTypeId || existing.deviceTypeId;
+        existing.status = 'online';
+        await deviceRepo.save(existing);
       } else {
-        device = await deviceRepo.save(
+        await deviceRepo.save(
           deviceRepo.create({
-            id: dto.device,
-            deviceTypeName: dto.deviceType,
-            deviceTypeId: dto.deviceTypeId || '',
+            id: payload.device,
+            deviceTypeName: payload.deviceType,
+            deviceTypeId: payload.deviceTypeId || '',
             lastSeen: new Date(),
+            status: 'online',
           }),
         );
       }
@@ -85,8 +108,8 @@ export class DevicesService {
       const messageId = this.generateMessageId();
 
       let rssiAvg: number | undefined;
-      if (dto.duplicates && dto.duplicates.length > 0) {
-        const rssiValues = dto.duplicates
+      if (payload.duplicates && payload.duplicates.length > 0) {
+        const rssiValues = payload.duplicates
           .filter((d) => d.rssi !== undefined)
           .map((d) => d.rssi!);
         if (rssiValues.length > 0) {
@@ -94,18 +117,26 @@ export class DevicesService {
         }
       }
 
+      let computedLat: number | undefined;
+      let computedLng: number | undefined;
+
+      if (payload.computedLocation && payload.computedLocation.status !== 0) {
+        computedLat = payload.computedLocation.lat;
+        computedLng = payload.computedLocation.lng;
+      }
+
       const message = await messageRepo.save(
         messageRepo.create({
           id: messageId,
-          deviceId: dto.device,
-          messageType: dto.messageType,
-          dataRaw: dto.data,
-          lqi: dto.lqi,
-          linkQuality: dto.linkQuality,
-          operatorName: dto.operatorName,
-          countryCode: dto.countryCode,
-          computedLat: dto.computedLocation?.lat,
-          computedLng: dto.computedLocation?.lng,
+          deviceId: payload.device,
+          messageType: payload.messageType,
+          dataRaw: payload.data,
+          lqi: payload.lqi,
+          linkQuality: payload.linkQuality,
+          operatorName: payload.operatorName,
+          countryCode: payload.countryCode,
+          computedLat,
+          computedLng,
           rssiAvg,
         }),
       );

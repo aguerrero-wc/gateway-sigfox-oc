@@ -2,9 +2,11 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { DevicesModule } from './modules/devices/devices.module';
+import { SigfoxModule } from './modules/sigfox/sigfox.module';
 
 @Module({
   imports: [
@@ -13,6 +15,9 @@ import { DevicesModule } from './modules/devices/devices.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+
+    // Schedule Module - For cron jobs (device health monitoring)
+    ScheduleModule.forRoot(),
 
     // Event Emitter Module - For async event-driven architecture
     EventEmitterModule.forRoot(),
@@ -33,7 +38,8 @@ import { DevicesModule } from './modules/devices/devices.module';
         logging: configService.get<string>('NODE_ENV') === 'development',
         // Connection pooling configuration
         extra: {
-          max: configService.get<string>('NODE_ENV') === 'production' ? 100 : 20,
+          max:
+            configService.get<string>('NODE_ENV') === 'production' ? 100 : 20,
           min: 2,
           idleTimeoutMillis: 30000,
           connectionTimeoutMillis: 2000,
@@ -42,6 +48,8 @@ import { DevicesModule } from './modules/devices/devices.module';
     }),
 
     DevicesModule,
+
+    SigfoxModule,
   ],
   controllers: [AppController],
   providers: [AppService],

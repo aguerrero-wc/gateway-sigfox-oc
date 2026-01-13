@@ -81,7 +81,6 @@
 
 ---
 
-
 Este es el momento crítico para la escalabilidad del sistema. Para que la IA no cometa errores en la lógica asíncrona, he diseñado estas tareas siguiendo el patrón **"Fire and Forget"** de NestJS con `EventEmitter2`.
 
 Aquí tienes el Markdown de la **Fase 3** enfocado en el módulo de Sigfox y la gestión de eventos:
@@ -91,43 +90,130 @@ Aquí tienes el Markdown de la **Fase 3** enfocado en el módulo de Sigfox y la 
 # 📋 Phase 3: Sigfox Ingestion & Event-Driven Architecture
 
 ## 3.1 Sigfox Module & Event Setup
-- [ ] **Task 3.1.1: Scaffold Sigfox Module**: Generate `SigfoxModule` and `SigfoxController` (`nest g mo modules/sigfox`, `nest g co modules/sigfox`).
-- [ ] **Task 3.1.2: Event Constants**: Create `src/modules/sigfox/events/sigfox.events.ts` with an enum `SigfoxEventNames` (e.g., `DATA_RECEIVED = 'sigfox.data_received'`).
-- [ ] **Task 3.1.3: Sigfox Payload DTO**: Create `SigfoxDataDto` in `src/modules/sigfox/dto/` mapping the Sigfox specification:
-    - Include `device`, `deviceType`, `data`, `lqi`, `computedLocation`, etc.
-    - **Note**: Handle `computedLocation` as a dynamic object (can have `lat/lng` or just `status`).
-    - Decorate with `@ApiProperty` for Swagger.
+
+- [x] **Task 3.1.1: Scaffold Sigfox Module**: Generate `SigfoxModule` and `SigfoxController` (`nest g mo modules/sigfox`, `nest g co modules/sigfox`).
+- [x] **Task 3.1.2: Event Constants**: Create `src/modules/sigfox/events/sigfox.events.ts` with an enum `SigfoxEventNames` (e.g., `DATA_RECEIVED = 'sigfox.data_received'`).
+- [x] **Task 3.1.3: Sigfox Payload DTO**: Create `SigfoxDataDto` in `src/modules/sigfox/dto/` mapping the Sigfox specification:
+  - Include `device`, `deviceType`, `data`, `lqi`, `computedLocation`, etc.
+  - **Note**: Handle `computedLocation` as a dynamic object (can have `lat/lng` or just `status`).
+  - Decorate with `@ApiProperty` for Swagger.
 
 ## 3.2 Asynchronous Controller Implementation
-- [ ] **Task 3.2.1: Immediate Response**: Implement `POST /api/v1/sigfox/data` in `SigfoxController`.
-    - Use `@HttpCode(HttpStatus.CREATED)` (201).
-    - Logic: Emit the event `SigfoxEventNames.DATA_RECEIVED` with the DTO as payload.
-    - **Constraint**: The controller must NOT `await` the processing logic. It should return immediately.
-- [ ] **Task 3.2.2: Swagger Documentation**: Tag the endpoint as `Sigfox Ingestion` and document the 201 response.
+
+- [x] **Task 3.2.1: Immediate Response**: Implement `POST /api/v1/sigfox/data` in `SigfoxController`.
+  - Use `@HttpCode(HttpStatus.CREATED)` (201).
+  - Logic: Emit the event `SigfoxEventNames.DATA_RECEIVED` with the DTO as payload.
+  - **Constraint**: The controller must NOT `await` the processing logic. It should return immediately.
+- [x] **Task 3.2.2: Swagger Documentation**: Tag the endpoint as `Sigfox Ingestion` and document the 201 response.
 
 ## 3.3 Background Listener (The "Brain")
-- [ ] **Task 3.3.1: Sigfox Listener**: Create `src/modules/sigfox/listeners/sigfox.listener.ts`.
-    - Use `@OnEvent(SigfoxEventNames.DATA_RECEIVED)`.
-- [ ] **Task 3.3.2: Background Processing Logic**:
-    - Call `DevicesService.upsertDevice()` to ensure the device exists and update `last_seen`.
-    - Call `DevicesService.createMessage()` to persist telemetry.
-    - Map Sigfox fields (e.g., `device` -> `device_id`, `data` -> `data_raw`).
-    - Calculate `rssi_avg` from the `duplicates` array if present.
-- [ ] **Task 3.3.3: Error Handling & Logs**: Add `Logger` in the listener to track if the background process fails, since the client (Sigfox) won't see these errors.
+
+- [x] **Task 3.3.1: Sigfox Listener**: Create `src/modules/sigfox/listeners/sigfox.listener.ts`.
+  - Use `@OnEvent(SigfoxEventNames.DATA_RECEIVED)`.
+- [x] **Task 3.3.2: Background Processing Logic**:
+  - Call `DevicesService.upsertDevice()` to ensure the device exists and update `last_seen`.
+  - Call `DevicesService.createMessage()` to persist telemetry.
+  - Map Sigfox fields (e.g., `device` -> `device_id`, `data` -> `data_raw`).
+  - Calculate `rssi_avg` from the `duplicates` array if present.
+- [x] **Task 3.3.3: Error Handling & Logs**: Add `Logger` in the listener to track if the background process fails, since the client (Sigfox) won't see these errors.
 
 ## 3.4 Reliability & Validation
-- [ ] **Task 3.4.1: Unit Test (Event Emission)**: Verify `SigfoxController` emits the correct event and returns 201.
-- [ ] **Task 3.4.2: Integration Test (Full Flow)**:
-    - Send a POST to `/api/v1/sigfox/data`.
-    - Verify response is `201`.
-    - Wait a few milliseconds and verify the `device` and `device_message` exist in the database.
-- [ ] **Task 3.4.3: Manual Verification**: Use Swagger to send the payload from `architecture.md` and check Docker logs to see the background processing in action.
+
+- [x] **Task 3.4.1: Unit Test (Event Emission)**: Verify `SigfoxController` emits the correct event and returns 201.
+- [x] **Task 3.4.2: Integration Test (Full Flow)**:
+  - Send a POST to `/api/v1/sigfox/data`.
+  - Verify response is `201`.
+  - Wait a few milliseconds and verify the `device` and `device_message` exist in the database.
+- [x] **Task 3.4.3: Manual Verification**: Use Swagger to send the payload from `architecture.md` and check Docker logs to see the background processing in action.
+
+---
+
+## Phase 3 Complete Summary
+
+### Event-Driven Architecture Implemented
+
+- ✅ **SigfoxModule** with thin controller (emits events only)
+- ✅ **SigfoxListener** handles all processing asynchronously
+- ✅ Events: `sigfox.data_received` enum defined
+- ✅ Controller returns `201 Accepted` immediately (non-blocking)
+- ✅ Background processing with transaction safety
+
+### Key Flow
+
+```
+POST /api/v1/sigfox/data
+    ↓ (emit event, no await)
+    ↓
+SigfoxListener @OnEvent('sigfox.data_received')
+    ↓
+DevicesService.upsertDevice()
+    ↓
+DevicesService.createMessage()
+    ↓ (transaction)
+Database
+```
+
+### Tests Passing
+
+- 12 tests total
+- Controllers, Services, Listeners all tested
+- Integration test verified full async flow
+
+### Verified Features
+
+- Immediate 201 response to Sigfox
+- Async background processing visible in logs
+- Location data extracted (lat/lng) when status != 0
+- RSSI average calculated from duplicates
+- Database records created correctly
 
 ---
 
 ### ⚠️ Reglas Técnicas para el Agente:
+
 1. **Inyección de Dependencias**: El `SigfoxModule` debe importar `DevicesModule` para usar sus servicios.
 2. **Transformación de Datos**: En el Listener, asegúrate de extraer correctamente `lat` y `lng` de `computedLocation` solo si `status` es distinto de 0.
 3. **Protocolo de Base de Datos**: Todas las inserciones en la DB hechas por el Listener deben seguir usando el `snake_case` definido en las entidades de la Fase 2.
 4. **Respuesta Rápida**: El controlador debe ser extremadamente ligero. Cualquier lógica pesada (parsing de JSON complejo, cálculos, DB) debe vivir en el Listener.
 
+# 📋 Phase 4: Device Health Monitoring (Status Management)
+
+## 4.1 Schema Evolution (Database)
+
+- [x] **Task 4.1.1: Migration - Status & Index**:
+  - Add `status` column to `devices` table (Type: `Enum` or `String`, Default: `'online'`).
+  - **CRITICAL**: Create a database index on `last_seen` column to optimize the heartbeat query.
+- [x] **Task 4.1.2: Update Entity**: Update `device.entity.ts` to include the `status` field.
+
+## 4.2 Health Logic Implementation
+
+- [x] **Task 4.2.1: Scheduler Setup**:
+  - Install `@nestjs/schedule`.
+  - Enable scheduling in `AppModule` using `ScheduleModule.forRoot()`.
+- [x] **Task 4.2.2: Device Health Service**: Create `src/modules/devices/services/devices-health.service.ts`.
+  - Implement a method `@Cron(CronExpression.EVERY_30_MINUTES)`.
+  - Logic: Update all devices where `last_seen` < 24h to `status = 'offline'`.
+  - Use `QueryBuilder` for a single efficient `UPDATE` query.
+
+## 4.3 Integration with Ingestion
+
+- [x] **Task 4.3.1: Upsert Online Status**:
+  - Modify the `upsertDevice` logic in `DevicesService`.
+  - Every time a new message arrives, force `status = 'online'` and update `last_seen`.
+
+## 4.4 Quality & Monitoring
+
+- [x] **Task 4.4.1: Unit Test**:
+  - Test the health service logic: Mock a device with a `last_seen` of 25 hours ago and verify the service would mark it as `offline`.
+- [x] **Task 4.4.2: Swagger Visibility**:
+  - Ensure the `status` field appears in the `GET /devices` response in Swagger.
+- [x] **Task 4.4.3: Manual Verification**:
+  - Manually change a `last_seen` in the DB to 2 días atrás y verificar que el Cron job lo cambie a `offline`.
+
+---
+
+### ⚠️ Reglas Técnicas para el Agente:
+
+1. **Rendimiento**: Prohibido hacer un `forEach` y guardar uno por uno en el Cron Job. Debe ser una sola query de base de datos (`UPDATE ... WHERE ...`).
+2. **Naming**: La columna nueva debe ser `status` y seguir el protocolo `snake_case`.
+3. **Logging**: El Cron Job debe loguear cuántos dispositivos cambió a offline (ej: `Logger.log('Updated 45 devices to offline status')`).
