@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { DevicesModule } from './modules/devices/devices.module';
 
 @Module({
   imports: [
@@ -39,6 +40,8 @@ import { AppService } from './app.service.js';
         },
       }),
     }),
+
+    DevicesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
