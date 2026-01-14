@@ -136,5 +136,42 @@ describe('DevicesService', () => {
       );
       expect(result.id).toBe('existing-device');
     });
+
+    it('should persist lat/lng coordinates when provided', async () => {
+      const dto: CreateDeviceDto = {
+        id: 'existing-device',
+        deviceTypeName: 'test-type',
+        deviceTypeId: 'type-123',
+        lat: 44.195847,
+        lng: 12.412389,
+      };
+
+      const existingDevice: Device = {
+        id: 'existing-device',
+        deviceTypeName: 'old-type',
+        deviceTypeId: 'type-old',
+        lastSeen: new Date('2026-01-01T00:00:00Z'),
+      } as Device;
+
+      deviceRepository.findOne.mockResolvedValue(existingDevice);
+      deviceRepository.save.mockResolvedValue({
+        ...existingDevice,
+        lastLat: dto.lat,
+        lastLng: dto.lng,
+        locationUpdatedAt: expect.any(Date),
+      } as Device);
+
+      const result = await service.upsertDevice(dto);
+
+      expect(deviceRepository.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'existing-device',
+          lastLat: 44.195847,
+          lastLng: 12.412389,
+        }),
+      );
+      expect(result.lastLat).toBe(44.195847);
+      expect(result.lastLng).toBe(12.412389);
+    });
   });
 });

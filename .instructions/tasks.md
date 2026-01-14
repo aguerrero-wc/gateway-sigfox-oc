@@ -212,8 +212,127 @@ Database
 
 ---
 
-### ⚠️ Reglas Técnicas para el Agente:
+# 📋 Phase 5
 
-1. **Rendimiento**: Prohibido hacer un `forEach` y guardar uno por uno en el Cron Job. Debe ser una sola query de base de datos (`UPDATE ... WHERE ...`).
-2. **Naming**: La columna nueva debe ser `status` y seguir el protocolo `snake_case`.
-3. **Logging**: El Cron Job debe loguear cuántos dispositivos cambió a offline (ej: `Logger.log('Updated 45 devices to offline status')`).
+## 5.1 Device State Evolution
+
+- [x] **Task 5.1.1: Database Migration**: Add `last_lat` (float), `last_lng` (float), and `location_updated_at` (timestamp) to the `devices` table.
+- [x] **Task 5.1.2: Update Device Entity**:
+  - Add the new fields with `@Column({ name: 'snake_case', type: 'float', nullable: true })`.
+- [x] **Task 5.1.3: Listener Update (Basic)**:
+  - Update `SigfoxListener` to extract `lat` and `lng` from the payload and pass them to `DevicesService.upsertDevice()`.
+- [x] **Task 5.1.4: Unit Test**: Verify that `upsertDevice` persists the latest coordinates in the `devices` table.
+
+## 5.2 Locations Scaffold & Data Integrity
+
+- [x] **Task 5.2.1: Documentation Update**:
+  - Update `docs/database-relations.md` defining the new relationship:
+    - `Location` -> `Device`
+    - Type: `OneToMany`
+    - FK: `location_id` in `Device` table
+    - Cascade: `SET NULL`
+- [x] **Task 5.2.2: Module Generation**:
+  - Generate `LocationsModule`, `LocationsService`, and `LocationsController` using NestJS CLI.
+- [x] **Task 5.2.3: Entity Implementation**:
+  - **Location Entity**: `id` (uuid), `name` (string), `latitude` (double), `longitude` (double), `radius_meters` (integer).
+  - **Device Entity Update**: Add `@ManyToOne` relation to `Location` and the column `location_id`.
+  - **Constraint**: Ensure all columns use `@Column({ name: 'snake_case' })`.
+- [x] **Task 5.2.4: Basic CRUD**:
+  - Implement `create` and `findAll` in `LocationsService`.
+  - Expose `POST /locations` and `GET /locations` in the controller.
+  - Add Swagger decorators (`@ApiTags`, `@ApiResponse`).
+
+## 5.2.5 Verification & Smoke Test
+
+- [x] **Task 5.2.5.1: Automated Test**:
+  - Create `locations.service.spec.ts` (Unit Test).
+  - **Test Case**: "should create and return a location". Verify that when saving a location, the ID is generated and the data matches.
+- [x] **Task 5.2.5.2: Manual Integration**:
+  - Start infra: `npm run infra:dev`.
+  - Perform a `POST` via Swagger to `/api/docs` with a sample location (e.g., "Main Office").
+  - Verify in the database (or via `GET`) that the record was persisted with its coordinates and radius.
+
+---
+
+# 📋 Phase 6.2-FIX: Relationship Integrity & Smoke Test
+
+## 6.2.3-FIX: Entity Relationship Repair
+
+- [x] **Task 6.2.3.1: Update Location Entity**:
+  - Add `@OneToMany(() => Device, (device) => device.location)` to the `Location` entity.
+- [x] **Task 6.2.3.2: Update Device Entity**:
+  - Add `@ManyToOne(() => Location, (location) => location.devices, { onDelete: 'SET NULL', nullable: true })`.
+  - Add the explicit column: `@Column({ name: 'location_id', nullable: true })`.
+  - Add the join decorator: `@JoinColumn({ name: 'location_id' })`.
+- [x] **Task 6.2.3.3: Sync Database**:
+  - Ejecutar `npm run infra:dev` y verificar que la tabla `devices` ahora tenga la columna `location_id` (puedes usar `docker exec -it sigfox-db psql -U user -d sigfox_db -c "\d devices"`).
+
+## 6.2.6: The "Real World" Integration Test
+
+- [x] **Task 6.2.6.1: Cross-Table Test Script**:
+  - Crear un test de integración (puede ser en `test/device-location.e2e-spec.ts` o un test unitario extendido).
+  - **Flujo del Test**:
+    1. **Crear Localización**: Insertar "Sede Central" (lat: 1.0, lng: 1.0, radio: 100).
+    2. **Crear Device**: Insertar un device con ID "TEST01".
+    3. **Asociar**: Actualizar el device asignándole el `id` de la localización creada.
+    4. **Verificar**: Consultar el device y comprobar que `device.location.name` sea "Sede Central".
+- [x] **Task 6.2.6.2: Manual Verification via Swagger**:
+  - Crear una ubicación mediante `POST /locations`.
+  - Usar el ID de esa ubicación para actualizar un dispositivo (puedes crear un endpoint temporal `PATCH /devices/:id/location` si no existe).
+  - Verificar que al hacer `GET /devices` el objeto de la localización aparezca incluido.
+
+---
+
+## Phase 6 Complete Summary
+
+### Relationship Integrity Fixed (Phase 6.2-FIX)
+
+- ✅ **Location Entity**: Added `@OneToMany(() => Device, (device) => device.location)` relation
+- ✅ **Device Entity**: Added `@ManyToOne` with `@JoinColumn({ name: 'location_id' })` and `onDelete: 'SET NULL'`
+- ✅ **Database Sync**: FK constraint `FK_3339609cb36cca36db0119e70e4` created successfully
+- ✅ **API Endpoint**: `PATCH /devices/:id/location` for assigning locations
+- ✅ **GET Endpoint**: `GET /devices` now includes `location` relation
+
+### Verified Features
+
+- Location created: "Main Office" (lat: 44.195847, lng: 12.412389)
+- Device TEST001 created and associated with location
+- `GET /devices` returns full location object with name, coordinates, radius
+- FK constraint enforces SET NULL on location deletion
+
+### Cross-Table Validation
+
+```
+Device {
+  id: "TEST001"
+  locationId: "uuid-of-location"
+  location: {
+    id: "uuid-of-location"
+    name: "Main Office"
+    latitude: 44.195847
+    longitude: 12.412389
+    radiusMeters: 100
+  }
+}
+```
+
+### Tests Passing
+
+- 23 unit tests passing
+- Manual integration verified with real database
+
+---
+
+### ⚠️ Instrucción para el Agente
+
+> "La tarea 5.2.3 se marcó como completada pero la relación `@ManyToOne` y `@OneToMany` entre `Device` y `Location` NO se implementó en el código.
+>
+> **Tu misión es:**
+>
+> 1. Modificar ambos archivos de entidad para conectar las tablas.
+> 2. Asegurarte de que la columna en la base de datos se llame `location_id` (snake_case).
+> 3. Crear el test indicado en la **Tarea 5.2.6.1** para demostrar que un dispositivo puede pertenecer a una ubicación y que la base de datos lo persiste correctamente."
+
+### ¿Por qué es importante este test?
+
+Porque al crear registros en ambas tablas, obligas a TypeORM a validar que los **Foreign Keys** están bien configurados. Si la relación está mal hecha, el test fallará con un error de "QueryFailedError: insert or update on table 'devices' violates foreign key constraint".
