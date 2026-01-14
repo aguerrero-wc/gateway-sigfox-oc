@@ -22,7 +22,7 @@ export class DevicesHealthService {
   async updateOfflineDevices(): Promise<void> {
     this.logger.debug('Running device health check cron job');
 
-    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const twentyFourHoursAgo = new Date(Date.now() - 1 * 60 * 60 * 1000);
 
     const result = await this.deviceRepository
       .createQueryBuilder('device')
