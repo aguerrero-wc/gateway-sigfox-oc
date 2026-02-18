@@ -11,11 +11,8 @@ import {
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { DeviceMessage } from './device-message.entity';
-<<<<<<< HEAD
 import { DeviceLocationHistory } from './device-location-history.entity';
-=======
-import { Location } from '../../locations/entities/location.entity';
->>>>>>> da5a0f006492c47b6ec08ba20355b9dcebe9dbc2
+import { Location } from '../../location/entities/location.entity';
 
 @Entity('devices')
 export class Device {

@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { DeviceLocationHistory } from '../../devices/entities/device-location-history.entity';
+import { Device } from '../../devices/entities/device.entity';
 
 @Entity('locations')
 export class Location {
@@ -99,6 +100,9 @@ export class Location {
     (history) => history.location,
   )
   deviceLocationHistory!: DeviceLocationHistory[];
+
+  @OneToMany(() => Device, (device) => device.location)
+  devices!: Device[];
 
   @ApiProperty({ description: 'Record creation timestamp' })
   @CreateDateColumn({ name: 'created_at' })
