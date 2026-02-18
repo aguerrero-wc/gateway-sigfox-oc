@@ -50,7 +50,6 @@ services:
     command: npm run start:dev
     environment:
       NODE_ENV: development
-      # Development-specific vars
       LOG_LEVEL: debug
     volumes:
       # Mount source code for hot-reload

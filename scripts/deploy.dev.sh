@@ -12,6 +12,10 @@ fi
 [ ! -f .env ] && { echo "❌ Missing .env"; exit 1; }
 
 # 3. Deploy
-docker compose --profile dev up -d --build
+# docker compose --profile dev up -d --build
+
+# docker compose --profile dev build --no-cache
+
+docker compose --profile dev up -d
 
 echo "✅ Dev Environment is UP"
