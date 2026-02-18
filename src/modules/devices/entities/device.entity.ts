@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { DeviceMessage } from './device-message.entity';
+import { DeviceLocationHistory } from './device-location-history.entity';
 
 @Entity('devices')
 export class Device {
@@ -49,6 +50,11 @@ export class Device {
     cascade: ['insert', 'update'],
   })
   messages!: DeviceMessage[];
+
+  @OneToMany(() => DeviceLocationHistory, (history) => history.device, {
+    cascade: ['insert', 'update'],
+  })
+  locationHistory!: DeviceLocationHistory[];
 
   @ApiProperty({ description: 'Record creation timestamp' })
   @CreateDateColumn({ name: 'created_at' })
