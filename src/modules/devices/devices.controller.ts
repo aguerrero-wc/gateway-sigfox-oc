@@ -2,10 +2,13 @@ import {
   Controller,
   Post,
   Get,
+  Patch,
   Body,
+  Param,
   HttpCode,
   HttpStatus,
   Query,
+  HttpException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -13,9 +16,11 @@ import {
   ApiResponse,
   ApiBody,
   ApiQuery,
+  ApiParam,
 } from '@nestjs/swagger';
 import { DevicesService } from './devices.service';
 import { CreateMessageDto } from './dto/create-message.dto';
+import { AssignLocationDto } from './dto/assign-location.dto';
 import { DeviceMessage } from './entities/device-message.entity';
 import { Device } from './entities/device.entity';
 
@@ -72,17 +77,41 @@ export class DevicesController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Get all devices with status' })
+  @ApiOperation({ summary: 'Get all devices with status and location' })
   @ApiQuery({ name: 'status', required: false, enum: ['online', 'offline'] })
   @ApiResponse({ status: 200, description: 'List of devices' })
   async getDevices(@Query('status') status?: string): Promise<Device[]> {
     const queryBuilder =
       this.devicesService['deviceRepository'].createQueryBuilder('device');
 
+    queryBuilder.leftJoinAndSelect('device.location', 'location');
+
     if (status) {
       queryBuilder.where('device.status = :status', { status });
     }
 
     return queryBuilder.orderBy('device.lastSeen', 'DESC').getMany();
+  }
+
+  @Patch(':id/location')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Assign a location to a device' })
+  @ApiParam({ name: 'id', description: 'Device ID' })
+  @ApiBody({ type: AssignLocationDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Location assigned successfully',
+    type: Device,
+  })
+  @ApiResponse({ status: 404, description: 'Device not found' })
+  async assignLocation(
+    @Param('id') deviceId: string,
+    @Body() dto: AssignLocationDto,
+  ): Promise<Device> {
+    const device = await this.devicesService.findById(deviceId);
+    if (!device) {
+      throw new HttpException('Device not found', HttpStatus.NOT_FOUND);
+    }
+    return this.devicesService.assignLocation(deviceId, dto.locationId || null);
   }
 }

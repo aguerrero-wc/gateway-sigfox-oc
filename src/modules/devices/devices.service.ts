@@ -49,11 +49,20 @@ export class DevicesService {
       where: { id: dto.id },
     });
 
+    const now = new Date(dto.lastSeen || Date.now());
+
     if (existing) {
-      existing.lastSeen = new Date(dto.lastSeen || Date.now());
+      existing.lastSeen = now;
       existing.deviceTypeName = dto.deviceTypeName;
       existing.deviceTypeId = dto.deviceTypeId;
       existing.status = 'online';
+
+      if (dto.lat !== undefined) {
+        existing.lastLat = dto.lat;
+        existing.lastLng = dto.lng;
+        existing.locationUpdatedAt = now;
+      }
+
       return this.deviceRepository.save(existing);
     }
 
@@ -61,8 +70,11 @@ export class DevicesService {
       id: dto.id,
       deviceTypeName: dto.deviceTypeName,
       deviceTypeId: dto.deviceTypeId,
-      lastSeen: dto.lastSeen ? new Date(dto.lastSeen) : new Date(),
+      lastSeen: now,
       status: 'online',
+      lastLat: dto.lat,
+      lastLng: dto.lng,
+      locationUpdatedAt: dto.lat !== undefined ? now : undefined,
     });
 
     return this.deviceRepository.save(device);
@@ -154,5 +166,36 @@ export class DevicesService {
 
   private generateMessageId(): string {
     return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  /**
+   * Assigns a location to a device.
+   */
+  async assignLocation(
+    deviceId: string,
+    locationId: string | null,
+  ): Promise<Device> {
+    this.logger.debug(`Assigning location ${locationId} to device ${deviceId}`);
+
+    const device = await this.deviceRepository.findOne({
+      where: { id: deviceId },
+    });
+
+    if (!device) {
+      throw new Error(`Device ${deviceId} not found`);
+    }
+
+    device.locationId = locationId || undefined;
+    return this.deviceRepository.save(device);
+  }
+
+  /**
+   * Finds a device by ID with its location relation.
+   */
+  async findById(deviceId: string): Promise<Device | null> {
+    return this.deviceRepository.findOne({
+      where: { id: deviceId },
+      relations: ['location'],
+    });
   }
 }

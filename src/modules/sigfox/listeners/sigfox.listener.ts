@@ -15,10 +15,20 @@ export class SigfoxListener {
     this.logger.debug(`Processing Sigfox data for device: ${payload.device}`);
 
     try {
+      let lat: number | undefined;
+      let lng: number | undefined;
+
+      if (payload.computedLocation && payload.computedLocation.status !== 0) {
+        lat = payload.computedLocation.lat;
+        lng = payload.computedLocation.lng;
+      }
+
       await this.devicesService.upsertDevice({
         id: payload.device,
         deviceTypeName: payload.deviceType,
         deviceTypeId: payload.deviceTypeId || '',
+        lat,
+        lng,
       });
 
       await this.devicesService.createMessage(payload);

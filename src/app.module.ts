@@ -7,7 +7,11 @@ import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
 import { DevicesModule } from './modules/devices/devices.module';
 import { SigfoxModule } from './modules/sigfox/sigfox.module';
+<<<<<<< HEAD
 import { LocationModule } from './modules/location/location.module';
+=======
+import { LocationsModule } from './modules/locations/locations.module';
+>>>>>>> da5a0f006492c47b6ec08ba20355b9dcebe9dbc2
 
 @Module({
   imports: [
@@ -52,7 +56,11 @@ import { LocationModule } from './modules/location/location.module';
 
     SigfoxModule,
 
+<<<<<<< HEAD
     LocationModule,
+=======
+    LocationsModule,
+>>>>>>> da5a0f006492c47b6ec08ba20355b9dcebe9dbc2
   ],
   controllers: [AppController],
   providers: [AppService],

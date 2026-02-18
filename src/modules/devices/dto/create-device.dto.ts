@@ -3,6 +3,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsDateString,
+  IsNumber,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -29,4 +30,20 @@ export class CreateDeviceDto {
   @IsDateString()
   @IsOptional()
   lastSeen?: string;
+
+  @ApiPropertyOptional({
+    example: 44.195847,
+    description: 'Last known latitude',
+  })
+  @IsNumber()
+  @IsOptional()
+  lat?: number;
+
+  @ApiPropertyOptional({
+    example: 12.412389,
+    description: 'Last known longitude',
+  })
+  @IsNumber()
+  @IsOptional()
+  lng?: number;
 }
