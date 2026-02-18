@@ -20,6 +20,7 @@ import { LocationService } from './location.service';
 import { LocationSeederService } from './location-seeder.service';
 import { CreateLocationDto } from './dto/create-location.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
+import { ImportLocationsDto } from './dto/import-locations.dto';
 import { Location } from './entities/location.entity';
 
 @ApiTags('Locations')
@@ -36,6 +37,15 @@ export class LocationController {
   @ApiResponse({ status: 200, description: 'Seed result' })
   seed(): Promise<{ seeded: number; skipped: boolean }> {
     return this.locationSeederService.seed();
+  }
+
+  @Post('import-cdn')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Bulk import locations from a CDN-hosted Excel file' })
+  @ApiResponse({ status: 200, description: 'Import result', schema: { example: { success: true, count: 42 } } })
+  @ApiResponse({ status: 400, description: 'Invalid URL or parsing error' })
+  importFromCdn(@Body() dto: ImportLocationsDto): Promise<{ success: boolean; count: number }> {
+    return this.locationService.importFromCdn(dto.fileUrl);
   }
 
   @Post()
