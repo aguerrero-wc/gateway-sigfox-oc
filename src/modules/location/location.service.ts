@@ -7,15 +7,65 @@ import { Location } from './entities/location.entity';
 import { CreateLocationDto } from './dto/create-location.dto';
 import { UpdateLocationDto } from './dto/update-location.dto';
 
+export interface GeoPoint {
+  lat: number;
+  lng: number;
+}
+
+export interface GeofenceResult {
+  isInside: boolean;
+  distanceKm: number;
+}
+
 @Injectable()
 export class LocationService {
   private readonly logger = new Logger(LocationService.name);
+  private static readonly EARTH_RADIUS_KM = 6371;
 
   constructor(
     @InjectRepository(Location)
     private readonly locationRepository: Repository<Location>,
     private readonly httpService: HttpService,
   ) {}
+
+  /**
+   * Converts degrees to radians.
+   */
+  private toRadians(degrees: number): number {
+    return degrees * (Math.PI / 180);
+  }
+
+  /**
+   * Calculates distance between two points using Haversine formula.
+   * Returns distance in kilometers.
+   */
+  calculateDistanceKm(point1: GeoPoint, point2: GeoPoint): number {
+    const lat1Rad = this.toRadians(point1.lat);
+    const lat2Rad = this.toRadians(point2.lat);
+    const deltaLat = this.toRadians(point2.lat - point1.lat);
+    const deltaLng = this.toRadians(point2.lng - point1.lng);
+
+    const a =
+      Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+      Math.cos(lat1Rad) * Math.cos(lat2Rad) * Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return LocationService.EARTH_RADIUS_KM * c;
+  }
+
+  /**
+   * Determines if a device point is within a geofence radius.
+   * @param point - The device coordinates
+   * @param center - The geofence center coordinates
+   * @param radiusMeters - The radius in meters (from DB)
+   */
+  isPointInRadius(point: GeoPoint, center: GeoPoint, radiusMeters: number): GeofenceResult {
+    const distanceKm = this.calculateDistanceKm(point, center);
+    const radiusKm = radiusMeters / 1000;
+    return {
+      isInside: distanceKm <= radiusKm,
+      distanceKm,
+    };
+  }
 
   /**
    * Creates a new static location (geofence / point of interest).

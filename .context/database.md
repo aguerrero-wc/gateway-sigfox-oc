@@ -24,22 +24,27 @@ FORMAT:
     *   `SigfoxDevice` (N) <--> (1) `Client` (via `client_id`)
     *   `SigfoxDevice` (1) <--> (N) `DeviceLocationHistory`
 
-*   **Location Context:**
-    *   `Location` (N) <--> (1) `Client` (via `client_id`)
-    *   `DeviceLocationHistory` (N) --> (1) `Location` (Optional match via `location_id`)
-    *   `Location` represents static geofences/points.
+*   **Location Context (`src/modules/location`):**
+    *   `Location` (1) <--> (N) `DeviceLocationHistory` (via `location_id`)
+    *   `Location` (1) <--> (N) `Device` (via `location_id`)
+    *   `Location` represents static geofences/points of interest.
+    *   `client_id` stored as plain `varchar` (Client entity not yet defined).
 
 ## 3. Core Entity Definitions (Summary)
 *Do not list all fields. Only Primary Keys, Foreign Keys, and Critical Business Data.*
 
-### `Location`
+### `Location` — table: `locations` — module: `src/modules/location`
 *   **PK:** `id` (uuid)
-*   **FK:** `client_id` -> `Client`
-*   **Geo:** `latitude`, `longitude`, `radiusMeters`
-*   **Key Data:** `name`, `address`
+*   **FK (soft):** `client_id` (varchar, nullable) — future relation to `Client`
+*   **Geo:** `latitude` (decimal 10,8), `longitude` (decimal 11,8), `radius_meters` (int, nullable)
+*   **Key Data:** `name`, `address`, `city`, `province`, `zip`, `country`, `notes`
+*   **Relations:** `@OneToMany` → `DeviceLocationHistory`, `@OneToMany` → `Device`
+*   **Timestamps:** `created_at`, `updated_at`
 
-### `DeviceLocationHistory`
+### `DeviceLocationHistory` — table: `device_location_history` — module: `src/modules/devices`
 *   **PK:** `id` (uuid)
-*   **FK:** `device_id` -> `SigfoxDevice`
-*   **FK:** `location_id` -> `Location` (nullable)
-*   **Key Data:** `latitude`, `longitude`, `timestamp`, `duplicates`
+*   **FK:** `device_id` (varchar) -> `Device` — `@ManyToOne`, `onDelete: CASCADE`
+*   **FK:** `location_id` (uuid, nullable) -> `Location` — `@ManyToOne`, nullable
+*   **Geo:** `latitude` (decimal 10,8), `longitude` (decimal 11,8)
+*   **Key Data:** `timestamp` (CreateDateColumn), `duplicates` (jsonb, nullable), `location_name` (varchar 255, nullable)
+*   **Index:** `idx_device_location_timestamp` on `timestamp`
