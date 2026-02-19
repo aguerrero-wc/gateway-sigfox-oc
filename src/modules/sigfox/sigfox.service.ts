@@ -112,6 +112,10 @@ export class SigfoxService {
       );
     } else {
       this.logger.log(`Device ${payload.device} is In_transit (no location match)`);
+      const inTransitLocation = await this.locationService.findInTransitLocation();
+      if (inTransitLocation) {
+        matchedLocation = inTransitLocation;
+      }
     }
 
     const history = this.historyRepository.create({
@@ -126,14 +130,16 @@ export class SigfoxService {
     await this.historyRepository.save(history);
     this.logger.log(`DeviceLocationHistory saved for device ${payload.device}`);
 
+    const isInTransit = matchedLocation?.name === 'In_transit';
+
     return {
       deviceId: payload.device,
       locationName: matchedLocation?.name || 'In_transit',
       locationId: matchedLocation?.id || null,
       latitude: lat,
       longitude: lng,
-      isInTransit: !matchedLocation,
-      distanceKm: matchedDistanceKm,
+      isInTransit,
+      distanceKm: isInTransit ? null : matchedDistanceKm,
     };
   }
 
@@ -144,11 +150,13 @@ export class SigfoxService {
     const lat = payload.computedLocation?.lat || 0;
     const lng = payload.computedLocation?.lng || 0;
 
+    const inTransitLocation = await this.locationService.findInTransitLocation();
+
     const history = this.historyRepository.create({
       deviceId: payload.device,
       latitude: lat,
       longitude: lng,
-      locationId: undefined,
+      locationId: inTransitLocation?.id || undefined,
       locationName: 'In_transit',
       duplicates: payload.duplicates || null,
     });
@@ -158,7 +166,7 @@ export class SigfoxService {
     return {
       deviceId: payload.device,
       locationName: 'In_transit',
-      locationId: null,
+      locationId: inTransitLocation?.id || null,
       latitude: lat,
       longitude: lng,
       isInTransit: true,

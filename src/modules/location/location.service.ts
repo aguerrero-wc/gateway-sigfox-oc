@@ -97,6 +97,31 @@ export class LocationService {
       .getMany();
   }
 
+  private inTransitLocationCache: Location | null = null;
+
+  /**
+   * Returns the "In_transit" location record from DB.
+   * Cached to avoid repeated queries.
+   */
+  async findInTransitLocation(): Promise<Location | null> {
+    if (this.inTransitLocationCache) {
+      return this.inTransitLocationCache;
+    }
+
+    this.logger.debug('Fetching In_transit location from DB');
+    const location = await this.locationRepository.findOne({
+      where: { name: 'In_transit' },
+    });
+
+    if (location) {
+      this.inTransitLocationCache = location;
+    } else {
+      this.logger.warn('In_transit location not found in database');
+    }
+
+    return location;
+  }
+
   /**
    * Returns a single location by UUID. Throws NotFoundException if not found.
    */
