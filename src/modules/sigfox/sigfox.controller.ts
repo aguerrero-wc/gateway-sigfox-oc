@@ -3,11 +3,15 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { SigfoxPayloadDto } from './dto/sigfox-payload.dto';
 import { SigfoxEventNames } from './events/sigfox.events';
+import { SigfoxService, ProcessingResult } from './sigfox.service';
 
 @ApiTags('Sigfox Ingestion')
 @Controller('sigfox')
 export class SigfoxController {
-  constructor(private readonly eventEmitter: EventEmitter2) {}
+  constructor(
+    private readonly eventEmitter: EventEmitter2,
+    private readonly sigfoxService: SigfoxService,
+  ) {}
 
   @Post('data')
   @HttpCode(HttpStatus.CREATED)
@@ -54,5 +58,15 @@ export class SigfoxController {
   async ingest(@Body() payload: SigfoxPayloadDto): Promise<{ status: string }> {
     this.eventEmitter.emit(SigfoxEventNames.DATA_RECEIVED, payload);
     return { status: 'accepted' };
+  }
+
+  @Post('callback')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Process Sigfox callback with geofence resolution' })
+  @ApiResponse({ status: 200, description: 'Message processed with location match' })
+  @ApiResponse({ status: 400, description: 'Invalid payload' })
+  async callback(@Body() payload: SigfoxPayloadDto): Promise<ProcessingResult> {
+    this.eventEmitter.emit(SigfoxEventNames.DATA_RECEIVED, payload);
+    return this.sigfoxService.processIncomingMessage(payload);
   }
 }

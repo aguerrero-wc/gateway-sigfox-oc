@@ -87,6 +87,17 @@ export class LocationService {
   }
 
   /**
+   * Returns all locations excluding "In_transit" for geofencing operations.
+   */
+  async findAllForGeofencing(): Promise<Location[]> {
+    this.logger.debug('Fetching locations for geofencing (excluding In_transit)');
+    return this.locationRepository
+      .createQueryBuilder('location')
+      .where('location.name != :excludedName', { excludedName: 'In_transit' })
+      .getMany();
+  }
+
+  /**
    * Returns a single location by UUID. Throws NotFoundException if not found.
    */
   async findOne(id: string): Promise<Location> {
