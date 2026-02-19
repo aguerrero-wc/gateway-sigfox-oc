@@ -60,6 +60,12 @@ services:
       - ./nest-cli.json:/usr/src/app/nest-cli.json:ro
       # Protect node_modules with anonymous volume
       - /usr/src/app/node_modules
+      - ./package.json:/usr/src/app/package.json
+      - ./package-lock.json:/usr/src/app/package-lock.json
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
     stdin_open: true
     tty: true
 
@@ -87,6 +93,10 @@ services:
         reservations:
           cpus: '0.5'
           memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
 
   # ============================================
   # DATABASE SERVICE (PostgreSQL 15)
@@ -191,4 +201,4 @@ networks:
     name: sigfox_network
     ipam:
       config:
-        - subnet: 172.20.0.0/16
+        - subnet: 172.30.0.0/16
