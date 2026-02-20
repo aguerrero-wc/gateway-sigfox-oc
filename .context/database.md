@@ -37,7 +37,7 @@ FORMAT:
 *   **PK:** `id` (uuid)
 *   **FK (soft):** `client_id` (varchar, nullable) — future relation to `Client`
 *   **Geo:** `latitude` (decimal 10,8), `longitude` (decimal 11,8), `radius_meters` (int, nullable)
-*   **Key Data:** `name`, `address`, `city`, `province`, `zip`, `country`, `notes`
+*   **Key Data:** `name`, `address`, `city`, `province`, `zip`, `country`, `mbs`
 *   **Relations:** `@OneToMany` → `DeviceLocationHistory`, `@OneToMany` → `Device`
 *   **Timestamps:** `created_at`, `updated_at`
 

@@ -65,7 +65,7 @@ export class CreateLocationDto {
   @ApiPropertyOptional({ example: 'Main cold-storage facility', description: 'Additional notes' })
   @IsString()
   @IsOptional()
-  notes?: string;
+  mbs?: string;
 
   @ApiPropertyOptional({
     example: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',

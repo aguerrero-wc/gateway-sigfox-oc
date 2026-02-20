@@ -84,8 +84,8 @@ export class Location {
     description: 'Additional notes',
     required: false,
   })
-  @Column({ name: 'notes', type: 'text', nullable: true })
-  notes?: string;
+  @Column({ name: 'mbs', type: 'text', nullable: true })
+  mbs?: string;
 
   @ApiProperty({
     example: 'client-uuid-123',

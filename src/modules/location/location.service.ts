@@ -213,7 +213,7 @@ export class LocationService {
         latitude,
         longitude,
         radiusMeters: 100,
-        notes: row['Micro BS'] ? String(row['Micro BS']).trim() : undefined,
+        mbs: row['Micro BS'] ? String(row['Micro BS']).trim() : undefined,
       });
     }
 
