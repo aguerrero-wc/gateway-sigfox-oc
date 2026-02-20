@@ -20,6 +20,7 @@ export interface ProcessingResult {
   longitude: number;
   isInTransit: boolean;
   distanceKm: number | null;
+  matchedByMbs?: boolean;
 }
 
 @Injectable()
@@ -35,38 +36,33 @@ export class SigfoxService {
   ) {}
 
   /**
+   * Extracts bsId values from duplicates array.
+   */
+  private extractBsIds(duplicates: Array<{ bsId?: string }> | undefined): string[] {
+    if (!duplicates || !Array.isArray(duplicates)) {
+      return [];
+    }
+    return duplicates.map((d) => d.bsId).filter((id): id is string => !!id);
+  }
+
+  /**
    * Processes incoming Sigfox message and resolves geofence location.
-   * Creates a DeviceLocationHistory record with the matched location.
+   * Priority: 1) MBS match from duplicates, 2) GPS geofence, 3) In_transit
    */
   async processIncomingMessage(payload: SigfoxPayloadDto): Promise<ProcessingResult> {
     this.logger.log(`Processing geofence for device: ${payload.device}`);
 
+    const bsIds = this.extractBsIds(payload.duplicates);
+
     if (!payload.computedLocation || payload.computedLocation.status === 0) {
-      this.logger.warn(`No valid location data for device ${payload.device}`);
-      return this.createInTransitResult(payload);
+      this.logger.warn(`No valid GPS data for device ${payload.device}`);
+      return this.createMbsOrInTransitResult(payload, bsIds);
     }
 
     const { lat, lng } = payload.computedLocation;
     if (lat === undefined || lng === undefined) {
       this.logger.warn(`Missing lat/lng for device ${payload.device}`);
-      return this.createInTransitResult(payload);
-    }
-
-    const device = await this.deviceRepository.findOne({
-      where: { id: payload.device },
-    });
-
-    if (!device) {
-      this.logger.log(`Device ${payload.device} not found, creating...`);
-      await this.deviceRepository.save(
-        this.deviceRepository.create({
-          id: payload.device,
-          deviceTypeName: payload.deviceType,
-          deviceTypeId: payload.deviceTypeId || '',
-          lastSeen: new Date(),
-          status: 'online',
-        }),
-      );
+      return this.createMbsOrInTransitResult(payload, bsIds);
     }
 
     const devicePoint: GeoPoint = { lat, lng };
@@ -118,6 +114,8 @@ export class SigfoxService {
       }
     }
 
+    await this.upsertDevice(payload, lat, lng, matchedLocation?.id);
+
     const history = this.historyRepository.create({
       deviceId: payload.device,
       latitude: lat,
@@ -144,18 +142,56 @@ export class SigfoxService {
   }
 
   /**
-   * Creates an In_transit result when no valid location data is available.
+   * Attempts MBS match first, falls back to In_transit when no GPS data.
+   * Updates device with location GPS and location_id if MBS match found.
    */
-  private async createInTransitResult(payload: SigfoxPayloadDto): Promise<ProcessingResult> {
-    const lat = payload.computedLocation?.lat || 0;
-    const lng = payload.computedLocation?.lng || 0;
+  private async createMbsOrInTransitResult(
+    payload: SigfoxPayloadDto,
+    bsIds: string[],
+  ): Promise<ProcessingResult> {
+    const mbsLocation = await this.locationService.findByMbs(bsIds);
 
+    if (mbsLocation) {
+      this.logger.log(
+        `Device ${payload.device} matched MBS location "${mbsLocation.name}" via bsId`,
+      );
+
+      const lat = Number(mbsLocation.latitude);
+      const lng = Number(mbsLocation.longitude);
+
+      await this.upsertDevice(payload, lat, lng, mbsLocation.id);
+
+      const history = this.historyRepository.create({
+        deviceId: payload.device,
+        latitude: lat,
+        longitude: lng,
+        locationId: mbsLocation.id,
+        locationName: mbsLocation.name,
+        duplicates: payload.duplicates || null,
+      });
+
+      await this.historyRepository.save(history);
+      this.logger.log(`DeviceLocationHistory saved for device ${payload.device} (MBS match)`);
+
+      return {
+        deviceId: payload.device,
+        locationName: mbsLocation.name,
+        locationId: mbsLocation.id,
+        latitude: lat,
+        longitude: lng,
+        isInTransit: false,
+        distanceKm: 0,
+        matchedByMbs: true,
+      };
+    }
+
+    this.logger.log(`No MBS match for device ${payload.device}, marking as In_transit`);
     const inTransitLocation = await this.locationService.findInTransitLocation();
 
     const history = this.historyRepository.create({
       deviceId: payload.device,
-      latitude: lat,
-      longitude: lng,
+      latitude: 0,
+      longitude: 0,
       locationId: inTransitLocation?.id || undefined,
       locationName: 'In_transit',
       duplicates: payload.duplicates || null,
@@ -167,10 +203,42 @@ export class SigfoxService {
       deviceId: payload.device,
       locationName: 'In_transit',
       locationId: inTransitLocation?.id || null,
-      latitude: lat,
-      longitude: lng,
+      latitude: 0,
+      longitude: 0,
       isInTransit: true,
       distanceKm: null,
     };
+  }
+
+  /**
+   * Upserts device with GPS coordinates and location_id.
+   */
+  private async upsertDevice(
+    payload: SigfoxPayloadDto,
+    lat: number,
+    lng: number,
+    locationId?: string,
+  ): Promise<void> {
+    let device = await this.deviceRepository.findOne({
+      where: { id: payload.device },
+    });
+
+    if (!device) {
+      device = this.deviceRepository.create({
+        id: payload.device,
+        deviceTypeName: payload.deviceType,
+        deviceTypeId: payload.deviceTypeId || '',
+        status: 'online',
+      });
+    }
+
+    device.lastLat = lat;
+    device.lastLng = lng;
+    device.lastSeen = new Date();
+    device.locationUpdatedAt = new Date();
+    device.locationId = locationId ?? undefined;
+
+    await this.deviceRepository.save(device);
+    this.logger.debug(`Device ${payload.device} updated with lat=${lat}, lng=${lng}, locationId=${locationId}`);
   }
 }

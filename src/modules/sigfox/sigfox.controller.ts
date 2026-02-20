@@ -66,7 +66,6 @@ export class SigfoxController {
   @ApiResponse({ status: 200, description: 'Message processed with location match' })
   @ApiResponse({ status: 400, description: 'Invalid payload' })
   async callback(@Body() payload: SigfoxPayloadDto): Promise<ProcessingResult> {
-    this.eventEmitter.emit(SigfoxEventNames.DATA_RECEIVED, payload);
     return this.sigfoxService.processIncomingMessage(payload);
   }
 }

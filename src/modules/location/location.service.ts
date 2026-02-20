@@ -100,6 +100,28 @@ export class LocationService {
   private inTransitLocationCache: Location | null = null;
 
   /**
+   * Finds a location by matching any bsId from duplicates with the mbs field.
+   * Returns the first matching location or null if no match.
+   */
+  async findByMbs(bsIds: string[]): Promise<Location | null> {
+    if (!bsIds || bsIds.length === 0) {
+      return null;
+    }
+
+    this.logger.debug(`Looking up location by MBS: ${bsIds.join(', ')}`);
+    const location = await this.locationRepository
+      .createQueryBuilder('location')
+      .where('location.mbs IN (:...bsIds)', { bsIds })
+      .getOne();
+
+    if (location) {
+      this.logger.log(`Found location "${location.name}" matching MBS: ${location.mbs}`);
+    }
+
+    return location;
+  }
+
+  /**
    * Returns the "In_transit" location record from DB.
    * Cached to avoid repeated queries.
    */
