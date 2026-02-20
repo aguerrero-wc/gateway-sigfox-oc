@@ -4,7 +4,7 @@
 Middleware to receive, decode, and persist telemetry from Sigfox. Optimized for high availability and non-blocking ingestion.
 
 ## Data Flow (Asynchronous)
-1. **Ingestion**: Sigfox Backend sends a POST request to `/api/v1/sigfox/data`.
+1. **Ingestion**: Sigfox Backend sends a POST request to `/api/v1/sigfox/callback`.
 2. **Device Validation**: 
    - Extract `device` ID from payload.
    - Check if the device exists in the `devices` table.
